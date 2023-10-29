@@ -2,23 +2,6 @@
 #include "lexAnalyzer.h"
 
 
-/*
-
-<标识符> → [a-zA-Z][a-zA-Z0-9]{0,31}
-<无符号整数> → [0-9]+
-<单字符分界符> → [+\-;,\(\){}/|\*|=|>|<]
-<双字符分界符> → (<<|>>|\+=|-=|\*=|/=|&&| \|\| |!=|==|)
-<小于> → <
-<等于> → =
-<大于> → >
-<斜竖> → /
-<感叹号> → !
-<保留字> → (void|int|float|double|if|else|for|do|while|...)
-
-
-*/
-
-
 const char* kept_words[] = {
     "void", "char", "short", "int", "float", "double", "long", "auto", "unsigned", "signed",
     "enum","typedef", "union", "struct",
@@ -64,11 +47,12 @@ const char* token_type_str(TokenType _ty) {
     }
 }
 int global_line = 1;
-
+int in_comment = 0;
 // Token结构体
 typedef struct {
-    TokenType type;
-    int line;
+    TokenType type; // 类型
+    int idx; // 编号
+    int line; // 行号
     unsigned char lexeme[33]; // 最长标识符长度+1
 } Token;
 
@@ -76,6 +60,7 @@ typedef struct {
                         while (!isspace(c)) { \
                             c = NEXT_POS; \
                         } \
+                        token.idx = 0; \
                         token.type = ERROR;}
 
 // 词法分析函数
@@ -92,6 +77,9 @@ Token lex(unsigned char** input) {
     while (isspace(c)) {
         if (c == '\n') {
             ++global_line;
+            if (in_comment == 1) {
+                in_comment = 0;
+            }
         }
         c = NEXT_POS;
     }
@@ -113,11 +101,16 @@ Token lex(unsigned char** input) {
             for (j = 0; kept_words[j]; ++j) {
                 if (!strcmp(token.lexeme, kept_words[j])) {
                     token.type = RESERVED_WORD;
+                    token.idx = j + 1;
                     break;
                 }
             }
-            if (token.type != RESERVED_WORD) {
+            if (in_comment) {
+                token.type = COMMENT;
+            }
+            else if (token.type != RESERVED_WORD) {
                 token.type = IDENTIFIER;
+                token.idx = 32;
             }
         }
         else {
@@ -134,7 +127,11 @@ Token lex(unsigned char** input) {
             c = NEXT_POS;
         }
         token.lexeme[i] = '\0';
-        if (isUnsignedNumber(token.lexeme)) {
+        if (in_comment) {
+            token.type = COMMENT;
+            token.idx = 33;
+        }
+        else if (isUnsignedNumber(token.lexeme)) {
             while (isdigit(c) || c == '+' || c == '-' || toupper(c) == 'E') {
                 if (i < MAX_IDEN_LEN) {
                     token.lexeme[i++] = c;
@@ -143,6 +140,7 @@ Token lex(unsigned char** input) {
             }
             token.lexeme[i] = '\0';
             token.type = UNSIGNED_INTEGER;
+            token.idx = 33;
         }
         else {
             LEX_ERROR("Err: Not an unsigned number!");
@@ -159,19 +157,44 @@ Token lex(unsigned char** input) {
             c = NEXT_POS;
         }
         token.lexeme[i] = '\0';
-        if (i == 1) {
+        if (isComment(token.lexeme)) {
+            //printf("%s\n", token.lexeme);
+            if (!strcmp(token.lexeme, "//")) {
+                in_comment = 1;
+            }
+            else if (!strcmp(token.lexeme, "/*")) {
+                if (in_comment == 0) {
+                    in_comment = 2;
+                }
+            }
+            else if (!strcmp(token.lexeme, "*/")) {
+                if (in_comment == 0) {
+                    LEX_ERROR("Not multiline comment!");
+                }
+                else if (in_comment == 2) {
+                    in_comment = 0;
+                }   
+            }
+            token.type = COMMENT;
+            token.idx = get_idx_double(token.lexeme);
+        }
+        else if (in_comment) {
+            token.type = COMMENT;
+            token.idx = 33;
+        }
+        else if (i == 1) {
             token.type = SINGLE_CHAR_DELIMITER;
+            token.idx = get_idx_single(token.lexeme[0]);
         }
         else if (isDoubleSeparator(token.lexeme)) {
             token.type = DOUBLE_CHAR_DELIMITER;
-        }
-        else if (isComment(token.lexeme)) {
-            token.type = COMMENT;
+            token.idx = get_idx_double(token.lexeme);
         }
         else {
             token.type = SINGLE_CHAR_DELIMITER;
             char s[2] = { token.lexeme[0], '\0' };
             strcpy(token.lexeme, s);
+            token.idx = get_idx_single(token.lexeme[0]);
             *input = single_pos;
         }
     }
@@ -186,14 +209,24 @@ Token lex(unsigned char** input) {
             c = NEXT_POS;
         }
         token.lexeme[i] = '\0';
-        if (isMacro(token.lexeme)) {
+        if (in_comment) {
+            token.type = COMMENT;
+            token.idx = 77;
+        }
+        else if (isMacro(token.lexeme)) {
             token.type = MACROS;
+            token.idx = get_idx_single(token.lexeme[0]);
+        }
+        else {
+            LEX_ERROR("Not a macro!");
         }
     }
     else {
         token.type = COMMENT;
+        token.idx = 0;
         char tmp[] = { c, '\0' };
         strcpy(token.lexeme, (const char*)tmp);
+        
         //LEX_ERROR("unknown type");
 
         c = NEXT_POS;
@@ -252,8 +285,8 @@ int main() {
     Token token;
     char* inputPtr = input;
 
-    while ((*inputPtr) != '\0' && (token = lex(&inputPtr)).type != ERROR) {
-        printf("Type: (%d)%15s, Lexeme:%20s , Line: %d\n", token.type, token_type_str(token.type), token.lexeme, token.line);
+    while ((*inputPtr) != '\0' && (token = lex(&inputPtr)).type != OK){
+        printf("Type: (%d)%15s, Lexeme:%20s , Line: %d\n", token.idx, token_type_str(token.type), token.lexeme, token.line);
     }
 
     printf("%s", inputPtr);

@@ -12,6 +12,10 @@ enum State_macro {
 };
 // 仅讨论形式上的宏定义是否合法: # [a-zA-z0-9_] () ()
 // 仅讨论一行宏定义
+/*
+    q  ds *-* daa dd
+    asdoajoj kskd
+*/
 void init_macro() {
     memset(trans_mat_macro, -1, sizeof(trans_mat_macro));
 

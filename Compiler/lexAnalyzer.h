@@ -12,6 +12,10 @@ int isSingleSeparator(char c);
 int isDoubleSeparator(const char* s);
 int isComment(const char* s);
 int isMacro(const char* s);
+
+int get_idx_single(char c);
+int get_idx_double(const char* double_sep);
+
 void init_iden();
 void init_unsigned();
 void init_double_sep();

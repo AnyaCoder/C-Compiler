@@ -11,6 +11,21 @@ enum State_double {
     _0, _AND, _PLUS, _MINUS, _EQ_LT_GT, _EXCLAM, _OR, _DOUBLE_OP, _ERR
 };
 
+const char* double_seps[] = {
+    ">=", "<=", "!=", "==", "++", "--", "+=", "-=", "*=",
+    "/=", ">>", "<<", "&&", "||", "//", "/*", "*/", "!!",
+    NULL
+};
+
+int get_idx_double(const char* double_sep) {
+    int i;
+    for (i = 0; double_seps[i]; ++i) {
+        if (!strcmp(double_sep, double_seps[i])) {
+            return 63 + i;
+        }
+    }
+    return 0;
+}
 void init_double_sep() {
     memset(trans_mat_double, -1, sizeof(trans_mat_double));
 
