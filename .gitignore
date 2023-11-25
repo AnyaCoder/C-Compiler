@@ -364,3 +364,11 @@ FodyWeavers.xsd
 
 # pdf
 *.pdf
+/Lexeme/lexTest
+/Lexeme/1.vits
+/Lexeme/2.vits
+/Lexeme/3.vits
+/Syntax/1.c
+/Syntax/1.txt
+/Syntax/2.txt
+/Syntax/3.txt
