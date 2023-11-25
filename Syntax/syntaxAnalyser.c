@@ -52,10 +52,13 @@ struct Token getNextToken() {
 
 void expect(enum TokenType type) {
     struct Token token = getNextToken();
-    printf("%s\n", str_TokenType[token.type]);
-    if (token.type != type) {
-        ErrMsg(str_TokenType[type]);
+    while (token.type != type) { // 不是期望符号，不断跳过
+        EOS_RET; // 遇到EOS，直接返回
+        ErrMsg(str_TokenType[type]); // 打印错误信息，期望符号
+        token = getNextToken(); // 获取下一token
     }
+    // 打印匹配了第几行的符号
+    printf("(%d): %s\n", token.line, str_TokenType[token.type]);
 }
 
 void parse_S() {
@@ -478,3 +481,5 @@ int main() {
 
     return 0;
 }
+
+

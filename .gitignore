@@ -372,3 +372,5 @@ FodyWeavers.xsd
 /Syntax/1.txt
 /Syntax/2.txt
 /Syntax/3.txt
+*.vits
+*.txt
