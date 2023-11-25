@@ -7,8 +7,8 @@ const char* kept_words[] = {
     "enum","typedef", "union", "struct",
     "if", "else","switch", "case", "default", "return", "goto",
     "for", "do", "while", "break", "continue",
-    "volatile", "const", "register", "extern", "static",
-    "sizeof", NULL
+    "volatile", "const", "then", "begin", "end",
+    NULL
 };
 // Token类型的枚举
 typedef enum {
@@ -48,6 +48,7 @@ const char* token_type_str(TokenType _ty) {
 }
 int global_line = 1;
 int in_comment = 0;
+int in_comma = 0;
 // Token结构体
 typedef struct {
     TokenType type; // 类型
@@ -76,10 +77,18 @@ Token lex(unsigned char** input) {
     // 跳过空白字符
     while (isspace(c)) {
         if (c == '\n') {
-            ++global_line;
             if (in_comment == 1) {
                 in_comment = 0;
             }
+            if (in_comma == 1) {
+                in_comma = 0;
+                token.type = ERROR;
+                token.line = global_line++;
+                LEX_ERROR("Err: Invalid comma closure!");
+                c = NEXT_POS;
+                return token;
+            }
+            ++global_line;
         }
         c = NEXT_POS;
     }
@@ -94,8 +103,16 @@ Token lex(unsigned char** input) {
                 token.lexeme[i++] = c;
             }
             c = NEXT_POS;
+            if (i == MAX_IDEN_LEN && !isspace(c)) {
+                LEX_ERROR("Err: Too long identifier!")
+                    while (!isspace(c)) {
+                        c = NEXT_POS; // skip
+                    }
+                return token;
+            }
         }
         token.lexeme[i] = '\0';
+        
         if (isIdentifier(token.lexeme)) {
             int j = 0;
             for (j = 0; kept_words[j]; ++j) {
@@ -107,6 +124,7 @@ Token lex(unsigned char** input) {
             }
             if (in_comment) {
                 token.type = COMMENT;
+                token.idx = (in_comment == 1 ? 77 : 78);
             }
             else if (token.type != RESERVED_WORD) {
                 token.type = IDENTIFIER;
@@ -114,13 +132,13 @@ Token lex(unsigned char** input) {
             }
         }
         else {
-            LEX_ERROR("Err: Not an identifier!");
+            LEX_ERROR("Err: Invalid identifier!");
         }
         
     }
     else if (isdigit(c)) {
         int i = 0;
-        while (isdigit(c) || c == '+' || c == '-' || toupper(c) == 'E') {
+        while (isalnum(c) || c == '+' || c == '-' || toupper(c) == 'E') {
             if (i < MAX_IDEN_LEN) {
                 token.lexeme[i++] = c;
             }
@@ -132,7 +150,7 @@ Token lex(unsigned char** input) {
             token.idx = 33;
         }
         else if (isUnsignedNumber(token.lexeme)) {
-            while (isdigit(c) || c == '+' || c == '-' || toupper(c) == 'E') {
+            while (isdigit(c) || c == '+' || c == '-' || toupper(c) == 'E' || c == '.') {
                 if (i < MAX_IDEN_LEN) {
                     token.lexeme[i++] = c;
                 }
@@ -143,23 +161,24 @@ Token lex(unsigned char** input) {
             token.idx = 33;
         }
         else {
-            LEX_ERROR("Err: Not an unsigned number!");
+            LEX_ERROR("Err: Invalid unsigned number!");
             return token;
         }
     }
     else if (isSingleSeparator(c)) {
         int i = 0;
         char* single_pos = ((*input) + 1);
-        while (isSingleSeparator(c)) {
+        while (isSingleSeparator(c) && i < 2) {
             if (i < MAX_IDEN_LEN) {
                 token.lexeme[i++] = c;
             }
             c = NEXT_POS;
         }
         token.lexeme[i] = '\0';
+        //printf("%s\n", token.lexeme);
         if (isComment(token.lexeme)) {
             //printf("%s\n", token.lexeme);
-            if (!strcmp(token.lexeme, "//")) {
+            if (in_comment != 2 && !strcmp(token.lexeme, "//")) {
                 in_comment = 1;
             }
             else if (!strcmp(token.lexeme, "/*")) {
@@ -169,22 +188,18 @@ Token lex(unsigned char** input) {
             }
             else if (!strcmp(token.lexeme, "*/")) {
                 if (in_comment == 0) {
-                    LEX_ERROR("Not multiline comment!");
+                    LEX_ERROR("Err:Invalid multiline comment!");
                 }
                 else if (in_comment == 2) {
                     in_comment = 0;
                 }   
             }
             token.type = COMMENT;
-            token.idx = get_idx_double(token.lexeme);
+            token.idx = (in_comment == 1 ? 77 : 78);
         }
         else if (in_comment) {
             token.type = COMMENT;
-            token.idx = 33;
-        }
-        else if (i == 1) {
-            token.type = SINGLE_CHAR_DELIMITER;
-            token.idx = get_idx_single(token.lexeme[0]);
+            token.idx = (in_comment == 1 ? 77 : 78);
         }
         else if (isDoubleSeparator(token.lexeme)) {
             token.type = DOUBLE_CHAR_DELIMITER;
@@ -192,10 +207,14 @@ Token lex(unsigned char** input) {
         }
         else {
             token.type = SINGLE_CHAR_DELIMITER;
-            char s[2] = { token.lexeme[0], '\0' };
-            strcpy(token.lexeme, s);
-            token.idx = get_idx_single(token.lexeme[0]);
+            char cc = token.lexeme[0];
+            token.idx = get_idx_single(cc);
+            char tmp[] = { cc , '\0' };
+            strcpy(token.lexeme, tmp);
             *input = single_pos;
+            if (cc == '"') {
+                in_comma = !in_comma;
+            }
         }
     }
     else if (c == '#') {
@@ -218,16 +237,21 @@ Token lex(unsigned char** input) {
             token.idx = get_idx_single(token.lexeme[0]);
         }
         else {
-            LEX_ERROR("Not a macro!");
+            LEX_ERROR("Err: Invalid macro!");
         }
     }
     else {
-        token.type = COMMENT;
-        token.idx = 0;
-        char tmp[] = { c, '\0' };
-        strcpy(token.lexeme, (const char*)tmp);
+        if (in_comment) {
+            token.type = COMMENT;
+            token.idx = 0;
+            char tmp[] = { c, '\0' };
+            strcpy(token.lexeme, (const char*)tmp);
+
+        }
+        else {
+            LEX_ERROR("Err: Invaild Identifier!");
+        }
         
-        //LEX_ERROR("unknown type");
 
         c = NEXT_POS;
     }
@@ -246,50 +270,58 @@ void init_lex() {
 int main() {
     init_lex();
 
-    unsigned char filename[256];
-    printf("Enter the filename of the C file: ");
-    scanf("%255s", filename); // read filename from user
-
-    FILE* file = fopen(filename, "r");
-    if (!file) {
+    unsigned char in_file_name[256];
+    unsigned char out_file_name[256];
+    printf("Enter the in_file_name of the C file: ");
+    scanf("%255s", in_file_name);
+    printf("Enter the out_file_name of the C file: ");
+    scanf("%255s", out_file_name);
+    FILE* in_file = fopen(in_file_name, "r");
+    if (!in_file) {
         perror("Error opening file");
         return 1;
     }
 
-    // Get the size of the file
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    fseek(in_file, 0, SEEK_END);
+    long fsize = ftell(in_file);
+    fseek(in_file, 0, SEEK_SET);
 
     unsigned char* input = (unsigned char*)malloc(sizeof(unsigned char) * (fsize + 1));
     if (!input) {
         perror("Failed to allocate memory");
-        fclose(file);
+        fclose(in_file);
         return 1;
     }
 
-    
-    size_t bytesRead = fread(input, 1, fsize, file);
+    size_t bytesRead = fread(input, 1, fsize, in_file);
     //printf("%d %d\n", (int)bytesRead, (int)fsize);
     input[bytesRead] = '\0';
     if (bytesRead > fsize) {
         perror("Failed to read the complete file");
         free(input);
-        fclose(file);
+        fclose(in_file);
         return 1;
     }
-    fclose(file);
-
-    printf("%s\n", input);
+    fclose(in_file);
 
     Token token;
     char* inputPtr = input;
 
+    FILE* out_file;
+    
+    out_file = fopen(out_file_name, "w");
+    if (!out_file) {
+        perror("Error opening out_file");
+        return 1;
+    }
     while ((*inputPtr) != '\0' && (token = lex(&inputPtr)).type != OK){
         printf("Type: (%d)%15s, Lexeme:%20s , Line: %d\n", token.idx, token_type_str(token.type), token.lexeme, token.line);
+        if (token.type != COMMENT) {
+            fprintf(out_file, "%d, %d, %s\n", token.line, token.idx, token.lexeme);
+        }
     }
-
-    printf("%s", inputPtr);
+    fclose(out_file);
+    printf("词法分析程序已完成，已经将结果写入：%s\n", out_file_name);
     free(input);
 
     return 0;

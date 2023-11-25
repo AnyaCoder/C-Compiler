@@ -4,11 +4,12 @@
 enum State_double trans_mat_double[N][N];
 
 enum InputSet_double {
-    Plus, Minus, Equal, Exclamation, LessThan, GreaterThan, Ampersand, Pipe, Other
+    Plus, Minus, Mul, Div, Equal, Exclamation, LessThan, GreaterThan, Ampersand, Pipe, Other
 };
 
 enum State_double {
-    _0, _AND, _PLUS, _MINUS, _EQ_LT_GT, _EXCLAM, _OR, _DOUBLE_OP, _ERR
+    _0, _AND, _PLUS, _MINUS, _MUL, _DIV, _EQ_LT_GT, _EXCLAM, _OR, _DOUBLE_OP, 
+    _ERR, _PLUS2, _MINUS2
 };
 
 const char* double_seps[] = {
@@ -35,10 +36,18 @@ void init_double_sep() {
     trans_mat_double[_0][Equal] = _EQ_LT_GT;
     trans_mat_double[_0][LessThan] = _EQ_LT_GT;
     trans_mat_double[_0][GreaterThan] = _EQ_LT_GT;
+    trans_mat_double[_0][Mul] = _MUL;
+    trans_mat_double[_0][Div] = _DIV;
     trans_mat_double[_0][Pipe] = _OR;
     trans_mat_double[_0][Exclamation] = _EXCLAM;
 
     trans_mat_double[_EXCLAM][Equal] = _DOUBLE_OP;   // !=
+    trans_mat_double[_PLUS][Equal] = _DOUBLE_OP;   // +=
+    trans_mat_double[_PLUS][Equal] = _PLUS2;   // ++
+    trans_mat_double[_MINUS][Equal] = _DOUBLE_OP;   // -=
+    trans_mat_double[_MINUS][Minus] = _MINUS2;   // --
+    trans_mat_double[_MUL][Equal] = _DOUBLE_OP;   // *=
+    trans_mat_double[_DIV][Equal] = _DOUBLE_OP;   // /=
     trans_mat_double[_EXCLAM][Exclamation] = _DOUBLE_OP; // !!
     trans_mat_double[_EQ_LT_GT][Equal] = _DOUBLE_OP; // ==, <=, >=
     trans_mat_double[_EQ_LT_GT][LessThan] = _DOUBLE_OP; // <<
@@ -73,7 +82,7 @@ int isDoubleSeparator(const char* s) {
         currentState = trans_mat_double[currentState][input];
         s++;
     }
-    return (currentState == _DOUBLE_OP);
+    return (currentState == _DOUBLE_OP || currentState == _PLUS2 || currentState == _MINUS2);
 }
 
 int iden_double_sep() {

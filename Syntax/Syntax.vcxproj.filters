@@ -15,37 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Unsigned.c">
+    <ClCompile Include="syntaxAnalyser.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="lexAnalyser.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Identifier.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="SingleSep.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="DoubleSep.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Comment.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Macros.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="test_chinese.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="lexAnalyzer.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="common_headers.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

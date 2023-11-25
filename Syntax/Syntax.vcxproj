@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{446f0f11-1a6f-422b-bdcc-df0d67b8d806}</ProjectGuid>
-    <RootNamespace>Compiler</RootNamespace>
+    <ProjectGuid>{791e5c25-0509-4891-b45c-18ef667f83f0}</ProjectGuid>
+    <RootNamespace>Syntax</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -127,18 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Comment.c" />
-    <ClCompile Include="DoubleSep.c" />
-    <ClCompile Include="Identifier.c" />
-    <ClCompile Include="lexAnalyser.c" />
-    <ClCompile Include="Macros.c" />
-    <ClCompile Include="SingleSep.c" />
-    <ClCompile Include="test_chinese.c" />
-    <ClCompile Include="Unsigned.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="common_headers.h" />
-    <ClInclude Include="lexAnalyzer.h" />
+    <ClCompile Include="syntaxAnalyser.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
