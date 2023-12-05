@@ -3,7 +3,8 @@
 // 定义产生式结构体
 typedef struct {
     char* lhs;  // 左侧符号
-    char** rhs;  // 右侧符号序列(不定数目)
+    char* rhs;  
+    char** rhs_symbols;  // 右侧符号序列(不定数目)
     int rhs_len;  // 右侧符号的数量
 } Production;
 
@@ -14,25 +15,37 @@ typedef struct {
     int capacity;       // 集合的容量
 } SymbolSet;
 
+typedef struct {
+    Production* p;      // 产生式
+    SymbolSet* symset;  // 对应的SELECT符号集合 
+} SelectSet;
+
 // 定义全局变量
 Production productions[100];  // 产生式数组
 int production_count = 0;     // 产生式数量
 SymbolSet first_sets[100];    // FIRST集合数组
 SymbolSet follow_sets[100];   // FOLLOW集合数组
-
+SelectSet select_sets[100];   // SELECT集合数组
+int select_set_count = 0;     // SELECT集合数量
 // 计算FIRST集
 void compute_first_sets();
 // 计算FOLLOW集
 void compute_follow_sets();
-// 打印集合
-void print_sets(SymbolSet* sets, int count);
+// 计算SELECT集
+void compute_select_sets();
+
+// 解析产生式
 void parse_production(const char* production_str, Production* production);
+// 是否终结符
 int is_terminal(char* symbol);
-
+// 计算FIRST集
 void compute_first_set(char* symbol, SymbolSet* set);
-
+// 计算FOLLOW集
 void compute_follow_set(char* symbol, SymbolSet* follow_set, SymbolSet* prev_set);
-
+// 计算SELECT集
+void compute_select_set(SelectSet* select_set, SymbolSet* first_set, SymbolSet* follow_set, Production* productions);
+// 辅助函数：打印集合
+void print_sets(SymbolSet* sets, int count);
 // 辅助函数：合并集合
 void merge_sets(SymbolSet* destination, SymbolSet* source);
 // 辅助函数：把符号加入到集合中
@@ -78,7 +91,7 @@ int main() {
     }*/
     compute_first_sets();
     compute_follow_sets();
-
+ 
     // 打印结果
     printf("FIRST集合:\n");
     print_sets(first_sets, production_count);
@@ -86,10 +99,96 @@ int main() {
     printf("\nFOLLOW集合:\n");
     print_sets(follow_sets, production_count);
 
+    compute_select_sets();
+    printf("\nSELECT集合:\n");
+    for (int i = 0; i < select_set_count; i++) {
+        printf("%s " RIGHT_ARROW " %s :", select_sets[i].p->lhs, select_sets[i].p->rhs);
+        printf("{ \033[33m");
+        for (int j = 0; j < select_sets[i].symset->size; j++) {
+            printf("%s, ", select_sets[i].symset->symbols[j]);
+        }
+        printf("\033[0m }\n");
+    }
+
     return 0;
 }
 
+void compute_select_sets() {
+    compute_select_set(select_sets, first_sets, follow_sets, productions);
+}
 
+void init_select_set(SelectSet* select_set, char* lhs, char* rhs) {
+    select_set->p = (Production*)malloc(sizeof(Production));
+    MALLOC_NULL_EXIT(select_set->p);
+
+    select_set->p->lhs = (char*)malloc(sizeof(char) * (strlen(lhs) + 1));
+    MALLOC_NULL_EXIT(select_set->p->lhs);
+    strcpy(select_set->p->lhs, lhs);
+
+    select_set->p->rhs = (char*)malloc(sizeof(char) * (strlen(rhs) + 1));
+    MALLOC_NULL_EXIT(select_set->p->rhs);
+    strcpy(select_set->p->rhs, rhs);
+
+    select_set->symset = (SymbolSet*)malloc(sizeof(SymbolSet));
+    MALLOC_NULL_EXIT(select_set->symset);
+    select_set->symset->capacity = select_set->symset->size = 0;
+    select_set->symset->symbols = NULL;
+    select_set->p->rhs_symbols = NULL;
+}
+
+void compute_select_set(SelectSet* select_sets, SymbolSet* first_sets, SymbolSet* follow_sets, Production* productions) {
+    for (int i = 0; i < production_count; i++) {
+        Production P = productions[i];
+        for (int j = 0; j < P.rhs_len; j++) {
+            
+            char* rhs = (char*)malloc(sizeof(char) * (strlen(P.rhs_symbols[j]) + 1));
+            MALLOC_NULL_EXIT(rhs);
+            strcpy(rhs, P.rhs_symbols[j]);  // 复制字符串，避免修改原始字符串
+
+            SelectSet select_set = { 0 };
+            init_select_set(&select_set, P.lhs, rhs);
+
+            char* rhs_symbol = strtok(rhs, " "); // 以空格分割 
+            int p = 0;
+            while (rhs_symbol != NULL) {
+                rhs_symbol = trimSpaces(rhs_symbol);
+                if (!is_terminal(rhs_symbol)) {
+                    int k = 0;
+                    for (; k < production_count; k++) {
+                        if (strcmp(productions[k].lhs, rhs_symbol) == 0) {
+                            break;
+                        }
+                    }
+                    merge_sets(select_set.symset, &first_sets[k]);
+                    if (!is_symbol_in_set(&first_sets[k], NIL)) {
+                        free(rhs_symbol);
+                        break;
+                    }
+                }
+                else {
+                    add_symbol_to_set(select_set.symset, rhs_symbol);
+                    free(rhs_symbol);
+                    break;
+                } // else
+                free(rhs_symbol);
+                p++;
+            } // while (rhs_symbol != NULL)
+            
+            if (is_symbol_in_set(select_set.symset, NIL) || strcmp(rhs, NIL) == 0) {
+                int k = 0;
+                for (; k < production_count; k++) {
+                    if (strcmp(productions[k].lhs, P.lhs) == 0) {
+                        break;
+                    }
+                }
+                merge_sets(select_set.symset, &follow_sets[k]);
+                remove_symbol_from_set(select_set.symset, NIL);
+            }
+            select_sets[select_set_count++] = select_set;
+
+        } // for( j )
+    } // for ( i )
+}
 void compute_first_sets() {
     for (int i = 0; i < production_count; i++) {
         compute_first_set(productions[i].lhs, &first_sets[i]);
@@ -109,9 +208,9 @@ void compute_first_set(char* symbol, SymbolSet* first_set) {
             if (strcmp(P.lhs, symbol) == 0) {
 
                 for (int j = 0; j < P.rhs_len; j++) {
-                    char* temp = (char*)malloc(sizeof(char) * (strlen(P.rhs[j]) + 1));
-                    MALLOC_NULL_RET(temp);
-                    strcpy(temp, P.rhs[j]);  // 复制字符串，避免修改原始字符串
+                    char* temp = (char*)malloc(sizeof(char) * (strlen(P.rhs_symbols[j]) + 1));
+                    MALLOC_NULL_EXIT(temp);
+                    strcpy(temp, P.rhs_symbols[j]);  // 复制字符串，避免修改原始字符串
                     char* rhs_symbol = strtok(temp, " "); // 以空格分割 
                     
                     int p = 0;
@@ -156,9 +255,9 @@ void compute_follow_set(char* symbol, SymbolSet* follow_set, SymbolSet* prev_set
     for (int i = 0; i < production_count; i++) { 
         Production P = productions[i];
         for (int j = 0; j < P.rhs_len; j++) {
-            char* temp = (char*)malloc(sizeof(char) * (strlen(P.rhs[j]) + 1));
-            MALLOC_NULL_RET(temp);
-            strcpy(temp, P.rhs[j]);  // 复制字符串，避免修改原始字符串
+            char* temp = (char*)malloc(sizeof(char) * (strlen(P.rhs_symbols[j]) + 1));
+            MALLOC_NULL_EXIT(temp);
+            strcpy(temp, P.rhs_symbols[j]);  // 复制字符串，避免修改原始字符串
             char* rhs_symbol = strtok(temp, " "); // 以空格分割 
             int p = 0;
             while (rhs_symbol != NULL) {
@@ -209,7 +308,7 @@ void compute_follow_set(char* symbol, SymbolSet* follow_set, SymbolSet* prev_set
 
 
 
-void print_sets(SymbolSet sets[], int count) {
+void print_sets(SymbolSet* sets, int count) {
     for (int i = 0; i < count; i++) {
         printf("%s: { ", productions[i].lhs);
         for (int j = 0; j < sets[i].size; j++) {
@@ -222,7 +321,7 @@ void print_sets(SymbolSet sets[], int count) {
 int is_terminal(char* symbol) {
     // TODO: 判断是否为终结符
     // 不是大写字母就是终结符
-    return !(isalpha(symbol[0]) && isupper(symbol[0])) || (symbol[0] == 'ε');
+    return (!strcmp(symbol, NIL)) || !(isalpha(symbol[0]) && isupper(symbol[0]));
 }
 
 // 辅助函数：合并集合
@@ -278,7 +377,7 @@ int is_symbol_in_set(SymbolSet* set, const char* symbol) {
 
 void parse_production(const char* production_str, Production* production) {
     char* temp = (char*)malloc(sizeof(char) * (strlen(production_str) + 1));
-    MALLOC_NULL_RET(temp);
+    MALLOC_NULL_EXIT(temp);
     strcpy(temp, production_str);  // 复制字符串，避免修改原始字符串
 
     // 分割左侧和右侧
@@ -286,7 +385,7 @@ void parse_production(const char* production_str, Production* production) {
         char* lhs = strtok(temp, RIGHT_ARROW);
         lhs = trimSpaces(lhs);
         production->lhs = (char*)malloc(sizeof(char) * (strlen(lhs) + 1));
-        MALLOC_NULL_RET(production->lhs);
+        MALLOC_NULL_EXIT(production->lhs);
         strcpy(production->lhs, lhs);
         free(lhs);
     }
@@ -294,22 +393,26 @@ void parse_production(const char* production_str, Production* production) {
     // 处理右侧
     // 箭头右边的字符串
     char* rhs = strtok(NULL, RIGHT_ARROW);
+    production->rhs = rhs;
+
+    rhs = trimSpaces(rhs); // copy of rhs
 
     char* token = strtok(rhs, "|");
     
     int i = 0;
-    production->rhs = (char**)malloc(sizeof(char*) * MAX_SYMBOLS);
-    MALLOC_NULL_RET(production->rhs);
+    production->rhs_symbols = (char**)malloc(sizeof(char*) * MAX_SYMBOLS);
+    MALLOC_NULL_EXIT(production->rhs_symbols);
     while (token != NULL) {
         //printf("token %d: %s\n", i + 1, token);
         token = trimSpaces(token);
-        production->rhs[i] = (char*)malloc(sizeof(char) * (strlen(token) + 1));
-        MALLOC_NULL_RET(production->rhs[i]);
-        strcpy(production->rhs[i], token);
+        production->rhs_symbols[i] = (char*)malloc(sizeof(char) * (strlen(token) + 1));
+        MALLOC_NULL_EXIT(production->rhs_symbols[i]);
+        strcpy(production->rhs_symbols[i], token);
         free(token);
         token = strtok(NULL, "|");
         i++;
     }
+    free(rhs);
     production->rhs_len = i;
     free(temp);
 }

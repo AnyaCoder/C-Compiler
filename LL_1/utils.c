@@ -19,7 +19,7 @@ char* trimSpaces(char* str) {
         end--;
     }
 
-    int len = end - str + 1;
+    size_t len = end - str + 1;
 
     char* newStr = (char*)malloc((len + 1) * sizeof(char));
     if (newStr == NULL) {

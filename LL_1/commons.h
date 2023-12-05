@@ -6,10 +6,10 @@
 #include <string.h>
 #include <ctype.h>
 
-#define MALLOC_NULL_RET(pStr) do {\
+#define MALLOC_NULL_EXIT(pStr) do {\
         if (pStr == NULL) { \
             fprintf(stderr, "(%d) in '%s': Cannot malloc!\n", __LINE__, __FUNCTION__); \
-            return; \
+            exit(-1); \
         } \
     } while(0)
 
