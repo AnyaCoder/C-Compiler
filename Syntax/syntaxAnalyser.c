@@ -23,6 +23,9 @@ const char* str_TokenType[] = {
     "SEMICOLON", "ASSIGN", "PLUS", "MINUS", "MUL", "DIV", "EOS",
     "UNKNOWN"
 };
+
+
+
 typedef struct Token {
     int idx;
     int line;
