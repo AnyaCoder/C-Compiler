@@ -130,8 +130,7 @@ void compute_first_sets() {
     }
 }
 
-// 定义 compute_first_sets, compute_follow_sets, print_sets 等函数
-// ...
+// 计算FIRST集，传入一个char* 的产生式左部符号串，以及一个first集合
 void compute_first_set(char* symbol, SymbolSet* first_set) {
     if (is_terminal(symbol)) {
         add_symbol_to_set(first_set, symbol);
@@ -150,14 +149,16 @@ void compute_first_set(char* symbol, SymbolSet* first_set) {
                     
                     int p = 0;
                     while (rhs_symbol != NULL) {
-                        rhs_symbol = trimSpaces(rhs_symbol);
+                        rhs_symbol = trimSpaces(rhs_symbol); // 去除空格
                         if (strcmp(rhs_symbol, NIL) == 0) {
                             add_symbol_to_set(first_set, NIL);
                             free(rhs_symbol);
                         }
                         else {
+                            // 取个并集
                             compute_first_set(rhs_symbol, first_set);
                             free(rhs_symbol);
+                            // 没有空产生式，就不往下计算
                             if (!is_symbol_in_set(first_set, NIL)) {
                                 break;
                             }

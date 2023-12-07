@@ -165,7 +165,7 @@ int main() {
 
 void LL_1() {
     currentToken = 0;
-
+    int total_errors = 0;
     push_stack(&analyse_stack, (Token) { .type = EOS });
     push_stack(&analyse_stack, (Token) { .type = S });
     enum TokenType cur_type, top_type;
@@ -177,7 +177,7 @@ void LL_1() {
 
         if (top_type == EOS) {
             if (cur_type == EOS) {
-                puts("Success!");
+                puts((total_errors == 0) ? "\033[32m Success! \033[0m" : "\033[31m Error! \033[0m");
             }
             else {
                 puts("There are redundant symbols in the source!");
@@ -202,12 +202,12 @@ void LL_1() {
             }
         }
         else if (is_sync) {
-            printf("Pop (Sync): %s\n", str_TokenType[pop_stack(&analyse_stack).type]);
+            printf("\033[31m Pop (Sync): %s\n \033[0m", str_TokenType[pop_stack(&analyse_stack).type]);
         }
         else {
-         
-            printf("\033[31m Syntax Error! Found: %s, Expected: {", \
-                str_Token[cur_type]);
+            total_errors++;
+            printf("\033[31m In line: %d , Syntax Error! Found: %s, Expected: {", \
+                tokens[currentToken].line, str_Token[cur_type]);
             if (is_terminal(str_Token[top_type])) {
                 printf("%s", str_Token[top_type]);
             } 
