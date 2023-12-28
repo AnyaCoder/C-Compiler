@@ -267,15 +267,29 @@ void init_lex() {
     init_macro();
     init_comment();
 }
-int main() {
+int main(int argc, char** argv) {
     init_lex();
+    for (int i = 0; i < argc; i++) {
+        printf("%s\n", argv[i]);
+    }
+    char in_file_name[256];
+    char out_file_name[256];
 
-    unsigned char in_file_name[256];
-    unsigned char out_file_name[256];
-    printf("Enter the in_file_name of the C file: ");
-    scanf("%255s", in_file_name);
-    printf("Enter the out_file_name of the C file: ");
-    scanf("%255s", out_file_name);
+    if (argc == 3) {
+        strcpy(in_file_name, argv[1]);
+    }
+    else {
+        scanf("%255s", in_file_name);
+    }
+
+    if (argc == 3) {
+        strcpy(out_file_name, argv[2]);
+    }
+    else {
+        scanf("%255s", out_file_name);
+    }
+    printf("\n");
+
     FILE* in_file = fopen(in_file_name, "r");
     if (!in_file) {
         perror("Error opening file");
@@ -316,7 +330,7 @@ int main() {
     }
     while ((*inputPtr) != '\0' && (token = lex(&inputPtr)).type != OK){
         printf("Type: (%d)%15s, Lexeme:%20s , Line: %d\n", token.idx, token_type_str(token.type), token.lexeme, token.line);
-        if (token.type != COMMENT) {
+        if (token.type != COMMENT && token.type != ERROR) {
             fprintf(out_file, "%d, %d, %s\n", token.line, token.idx, token.lexeme);
         }
     }
